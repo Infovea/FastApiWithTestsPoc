@@ -7,7 +7,7 @@ from sqlmodel import SQLModel
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlalchemy.ext.asyncio import AsyncEngine
 from fastapi.testclient import TestClient
-from src.db.models import Book
+from src.db.models import Book, Library
 
 # Set testing environment variable
 os.environ["TESTING"] = "1"
@@ -42,7 +42,8 @@ async def test_session(test_engine: AsyncEngine) -> AsyncGenerator[AsyncSession,
 @pytest.fixture
 def client():
     # Import here to avoid circular imports
-    from src.main import app, get_async_session
+    from src.main import app
+    from src.dependencies import get_async_session
     from src.db.main import async_engine
 
     with TestClient(app) as test_client:
@@ -66,6 +67,27 @@ async def sample_book(test_session: AsyncSession) -> Book:
     await test_session.refresh(book)
     return book  # Use return instead of yield for simplicity
 
+@pytest_asyncio.fixture
+async def sample_library(test_session: AsyncSession) -> Library:
+    from src.db.models import Library
 
+    library = Library(name="Test Library", location="Test Location")
+    test_session.add(library)
+    await test_session.commit()
+    await test_session.refresh(library)
+    return library
+
+@pytest_asyncio.fixture
+async def sample_book_in_library(test_session: AsyncSession, sample_library: Library) -> Book:
+    book = Book(
+        title="Test Book in Library",
+        author="Test Author",
+        year=2023,
+        library_id=sample_library.id
+    )
+    test_session.add(book)
+    await test_session.commit()
+    await test_session.refresh(book)
+    return book
 
 
